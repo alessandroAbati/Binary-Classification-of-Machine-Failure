@@ -75,7 +75,7 @@ The script generates an AUC score as a measure of the model's performance. The R
 
 ## Contributors
 
-- [Your Name](https://github.com/yourusername)
+- [Alessandro Abati](https://github.com/alessandroAbati)
 
 ## License
 
@@ -85,4 +85,3 @@ This project is licensed under the [MIT License](LICENSE).
 
 - Special thanks to the creators and maintainers of Keras, TensorFlow, and Keras Tuner for providing powerful tools for deep learning model development.
 
-Feel free to customize this README to provide more details specific to your project or add any additional sections that may be relevant.
