@@ -9,10 +9,13 @@ from sklearn.utils import class_weight
 from sklearn.metrics import roc_curve, roc_auc_score
 import keras_tuner
 from keras.callbacks import EarlyStopping
+from timeit import default_timer as timer
+import os
+
 
 # Load data
-train = pd.read_csv("./data/train.csv")
-test = pd.read_csv("./data/test.csv")
+train = pd.read_csv(os.path.join("..", "data", "train.csv"))
+test = pd.read_csv(os.path.join("..", "data", "test.csv"))
 dataset = pd.concat([train, test])
 
 # Data Preprocessing
@@ -47,6 +50,15 @@ def create_features(df):
 train = create_features(train)
 test = create_features(test)
 
+# Custom Callback for measuring training time
+class TimingCallback(keras.callbacks.Callback):
+    def __init__(self, logs={}):
+        self.logs=[]
+    def on_epoch_begin(self, epoch, logs={}):
+        self.starttime = timer()
+    def on_epoch_end(self, epoch, logs={}):
+        self.logs.append(timer()-self.starttime)
+
 # Model Definition
 class MyHyperModel(keras_tuner.HyperModel):
     def build(self, hp):
@@ -72,12 +84,6 @@ class MyHyperModel(keras_tuner.HyperModel):
         model.summary()
         return model
 
-# Load and preprocess data
-train = pd.read_csv("./data/train.csv")
-test = pd.read_csv("./data/test.csv")
-train = preprocess_data(train)
-test = preprocess_data(test)
-
 # Prepare features and target
 train_X = train.drop(columns=['id', 'Machine failure']).reset_index(drop=True)
 train_y = train['Machine failure'].reset_index(drop=True)
@@ -100,10 +106,10 @@ class_weights = dict(enumerate(class_weights))
 tuner = keras_tuner.BayesianOptimization(
     hypermodel=MyHyperModel(),
     objective=keras_tuner.Objective("val_auc", direction="max"),
-    max_trials=45,
+    max_trials=25,
     num_initial_points = 5,
     overwrite=True,
-    directory="../hyperOptModelsHistory",
+    directory=os.path.join("..", "hyperOptModelsHistory"),
     project_name="BinaryClassificationofMachineFailure",
 )
 
@@ -126,13 +132,17 @@ model = hypermodel.build(best_hp)
 # Fit with the entire dataset.
 train_X = np.concatenate((train_X, val_X))
 train_y = np.concatenate((train_y, val_y))
-history = hypermodel.fit(best_hp, model, train_X, train_y, epochs=1000, class_weight=class_weights, callbacks=[EarlyStopping(patience=30)], validation_split=0.25)
+training_time = TimingCallback()
+history = hypermodel.fit(best_hp, model, train_X, train_y, epochs=1000, class_weight=class_weights, callbacks=[EarlyStopping(patience=30), training_time], validation_split=0.25)
+
+# Printing training time using the custom Callback class
+print(f"\nTotal training time: {sum(training_time.logs):.2f} s\n")
 
 # Plotting loss
 plt.plot(history.history['loss'], label='train')
 plt.plot(history.history['val_loss'], label='val')
 plt.legend()
-plt.show()
+#plt.show()
 
 # Generate Prediction
 y_pred = model.predict(val_X)
@@ -140,7 +150,7 @@ fpr, tpr, _ = roc_curve(val_y, y_pred)
 auc = roc_auc_score(val_y, y_pred)
 plt.plot(fpr, tpr, label="auc="+str(auc))
 plt.legend(loc=4)
-plt.show()
+#plt.show()
 
 print(f"AUC: {auc}")
 print(f"\nPrediction:\n {y_pred}")
@@ -148,3 +158,6 @@ print(f"\nPrediction:\n {y_pred}")
 # Create output
 output = pd.DataFrame({"Machine failure": np.squeeze(y_pred)})
 print(output[output['Machine failure'] > 0.5].sort_values(by=['Machine failure'], ascending=False))
+
+# Save trained model
+model.save(os.path.join("trained_model", "dnn.h5"))

@@ -73,6 +73,8 @@ The script performs data preprocessing, feature engineering, hyperparameter tuni
 
 The script generates an AUC score as a measure of the model's performance. The ROC curve is plotted to visualize the trade-off between true positive rate and false positive rate. Additionally, the script generates predictions on the validation dataset.
 
+The hyperparameter optimization has been run for 5 hours on an RTX 3060 Ti, while the training time was 7.80 minutes.
+
 ## Contributors
 
 - [Alessandro Abati](https://github.com/alessandroAbati)
